@@ -4,6 +4,10 @@ password = 'password'
 mode = 'factorio'
 
 [twitch]
+# To get an auth token, visit the following URL:
+# https://id.twitch.tv/oauth2/authorize?client_id=lm0k1rk7zowacwnrfmk8c7gxteft9r&redirect_uri=https://barinzaya.github.io/oauth.html&response_type=token&scope=channel:read:redemptions
+#
+# Paste the token inside of the quotes below
 auth-token = ''
 
 [[redeems]]
