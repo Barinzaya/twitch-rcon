@@ -1,0 +1,41 @@
+[package]
+name = "twitch-rcon"
+description = "A utility which allows Twitch channel point rewards to trigger RCON commands. Compatible with Source engine games, Minecraft, and Factorio."
+authors = ["Barinzaya <barinzaya@gmail.com>"]
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+
+[dependencies]
+anyhow = { version = "1", features = [] }
+fastrand = { version = "1", features = [] }
+flume = { version = "0.10", features = ["async"], default-features = false }
+futures-util = { version = "0.3", features = [] }
+log = { version = "0.4", features = ["max_level_trace", "release_max_level_info"] }
+notify = { version = "5", features = ["macos_kqueue"], default-features = false }
+parking_lot = { version = "0.12", features = [] }
+rcon = { version = "0.6", features = ["rt-tokio"] }
+reqwest = { version = "0.11", features = [] }
+serde = { version = "1", features = ["rc"] }
+simplelog = { version = "0.12", features = [] }
+time = { version = "0.3", features = ["formatting"] }
+tokio = { version = "1", features = ["fs", "macros", "net", "parking_lot", "rt", "signal", "sync", "time"] }
+tokio-tungstenite = { version = "0.18", features = ["native-tls"] }
+tokio-util = { version = "0.7", features = [] }
+toml_edit = { version = "0.17", features = ["serde"] }
+tungstenite = { version = "0.18", features = [] }
+twitch_api2 = { version = "0.6", features = ["pubsub", "reqwest"], default-features = false }
+twitch_oauth2 = { version = "0.10", features = ["client", "reqwest"] }
+
+[features]
+multi-thread = ["tokio/rt-multi-thread"]
+
+[profile.dev.package."*"]
+opt-level = 3
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = 3
+panic = "abort"
+strip = true

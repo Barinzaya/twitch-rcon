@@ -1,0 +1,23 @@
+[rcon]
+host = '127.0.0.1:12345'
+password = 'password'
+mode = 'factorio'
+
+[twitch]
+auth-token = ''
+
+[[redeems]]
+name = 'Attack (Factorio)'
+command = '/Attack 12 Barinzaya'
+
+[[redeems]]
+name = 'Paranoia (Factorio)'
+command = '/Paranoia 100 15 Barinzaya'
+
+[[redeems]]
+name = 'Stinky (Factorio)'
+command = '/SpawnPollution 100 Barinzaya'
+
+[[redeems]]
+name = 'Teleport (Factorio)'
+command = '/Teleport 100 Barinzaya'
