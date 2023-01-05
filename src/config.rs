@@ -38,7 +38,8 @@ pub enum RconMode {
 #[derive(Clone, Debug, Deserialize, PartialEq)]
 #[serde(deny_unknown_fields, rename_all = "kebab-case")]
 pub struct RedeemConfig {
-	pub name: Arc<str>,
+	pub name: String,
+	pub channel: Option<String>,
 	pub command: Arc<str>,
 }
 

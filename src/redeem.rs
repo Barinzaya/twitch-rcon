@@ -40,6 +40,7 @@ pub async fn run(redeem_rx: ChannelRx<RedeemCommand>, mut config_rx: WatchRx<Vec
 
 					redeems[start..].iter()
 						.take_while(|r| *r.name == *redeem.reward_title)
+						.filter(|r| r.channel.as_ref().map(|c| c.as_str() == channel.as_str()).unwrap_or(true))
 						.map(|r| r.command.clone())
 						.collect::<Vec<_>>()
 				};
