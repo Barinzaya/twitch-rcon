@@ -17,21 +17,23 @@ fn main() -> ExitCode {
     init_logger().expect("Failed to set up logger");
     log::info!("Twitch to RCON bot starting...");
 
-    let code = match run_sync() {
+    match run_sync() {
         Ok(()) => {
             log::info!("Closing log file (clean exit).");
+            log::logger().flush();
             ExitCode::SUCCESS
         },
 
         Err(e) => {
             log::error!("An unhandled error has occurred: {:#}", e);
             log::info!("Closing log file (crash exit).");
+            log::logger().flush();
+
+            println!("Press any key to exit.");
+            let _ = console::Term::stdout().read_key();
             ExitCode::FAILURE
         }
-    };
-
-    log::logger().flush();
-    code
+    }
 }
 
 fn init_logger() -> AnyResult<()> {

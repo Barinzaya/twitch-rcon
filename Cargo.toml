@@ -2,12 +2,13 @@
 name = "twitch-rcon"
 description = "A utility which allows Twitch channel point rewards to trigger RCON commands. Compatible with Source engine games, Minecraft, and Factorio."
 authors = ["Barinzaya <barinzaya@gmail.com>"]
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 license = "MIT"
 
 [dependencies]
 anyhow = { version = "1", features = [] }
+console = { version = "0.15", features = [], default-features = false }
 fastrand = { version = "1", features = [] }
 flume = { version = "0.10", features = ["async"], default-features = false }
 futures-util = { version = "0.3", features = [] }
