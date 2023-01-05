@@ -1,7 +1,8 @@
 [rcon]
-host = '127.0.0.1:12345'
-password = 'password'
-mode = 'factorio'
+# Settings for the RCON server
+host = '127.0.0.1:12345' # IP and port of the RCON server to send commands to
+password = 'password' # The password to supply to the server
+mode = 'factorio' # The type of server being connected to. May be 'factorio', 'minecraft', or 'source'.
 
 [twitch]
 # To get an auth token, visit the following URL:
