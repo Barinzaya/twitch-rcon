@@ -46,6 +46,8 @@ pub struct RedeemConfig {
 
 	#[serde(flatten)]
 	pub extra: ExtraMap,
+
+	#[serde(default)]
 	pub format: ExtraFormat,
 }
 
