@@ -12,16 +12,29 @@ auth-token = ''
 
 [[redeems]]
 reward = 'Attack (Factorio)'
-command = '/Attack 12 Barinzaya'
+command = '/Attack'
+
+limit = 12
+name = 'Barinzaya'
 
 [[redeems]]
 reward = 'Paranoia (Factorio)'
-command = '/Paranoia 100 15 Barinzaya'
+command = '/Paranoia'
+
+limit = 15
+radius = 200
+name = 'Barinzaya'
 
 [[redeems]]
 reward = 'Stinky (Factorio)'
-command = '/SpawnPollution 100 Barinzaya'
+command = '/SpawnPollution'
+
+pollution = 240
+name = 'Barinzaya'
 
 [[redeems]]
 reward = 'Teleport (Factorio)'
-command = '/Teleport 100 Barinzaya'
+command = '/Teleport'
+
+radius = 100
+name = 'Barinzaya'

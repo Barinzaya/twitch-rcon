@@ -41,7 +41,7 @@ pub async fn run(redeem_rx: ChannelRx<RedeemCommand>, mut config_rx: WatchRx<Vec
 					redeems[start..].iter()
 						.take_while(|r| *r.reward == *redeem.reward_title)
 						.filter(|r| r.channel.as_ref().map(|c| c.as_str() == channel.as_str()).unwrap_or(true))
-						.map(|r| r.command.clone())
+						.map(|r| r.command().map(|s| Arc::from(s)))
 						.collect::<Vec<_>>()
 				};
 
@@ -49,9 +49,16 @@ pub async fn run(redeem_rx: ChannelRx<RedeemCommand>, mut config_rx: WatchRx<Vec
 				log::info!(target: "redeem", "{} command{} triggered by redemption of \"{}\" by {} ({}) in {}.", hits, if hits != 1 { "s" } else { "" }, redeem.reward_title, redeem.user_name, redeem.user_login, channel);
 
 				for command in commands {
-					if rcon_tx.send_async(RconCommand::Handle(command)).await.is_err() {
-						log::debug!(target: "redeem", "Stopping redeem processing due to RCON channel closure.");
-						break;
+					match command {
+						Ok(command) => {
+							println!("{}", command);
+							if rcon_tx.send_async(RconCommand::Handle(command)).await.is_err() {
+								log::debug!(target: "redeem", "Stopping redeem processing due to RCON channel closure.");
+								break;
+							}
+						},
+
+						Err(e) => log::error!(target: "redeem", "Failed to generate command to send: {:#}", e),
 					}
 				}
 			},
