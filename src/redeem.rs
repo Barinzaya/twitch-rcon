@@ -51,7 +51,8 @@ pub async fn run(redeem_rx: ChannelRx<RedeemCommand>, mut config_rx: WatchRx<Vec
 				for command in commands {
 					match command {
 						Ok(command) => {
-							println!("{}", command);
+							log::debug!(target: "redeem", "Requesting command to be sent: {}", command);
+
 							if rcon_tx.send_async(RconCommand::Handle(command)).await.is_err() {
 								log::debug!(target: "redeem", "Stopping redeem processing due to RCON channel closure.");
 								break;
