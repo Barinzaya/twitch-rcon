@@ -55,8 +55,12 @@ impl AppConfig {
 		let raw_config = tokio::fs::read(path).await
 			.with_context(|| format!("Failed to read config file <{}>", path.display()))?;
 
-		let config = toml_edit::de::from_slice::<Self>(&raw_config)
+		let mut config = toml_edit::de::from_slice::<Self>(&raw_config)
 			.with_context(|| format!("Failed to parse config file <{}>", path.display()))?;
+
+        // TODO: Technically, this should be done in a blocking context, but as there should only
+        // ever be a few redeems, it's probably not worth doing so
+        config.redeems.sort_by(|a, b| a.reward.cmp(&b.reward));
 
 		config.validate()?;
 		Ok(config)
@@ -160,11 +164,7 @@ impl<T> SetRconMode for rcon::Builder<T> {
 }
 
 pub async fn distribute(config_rx: ChannelRx<AppConfig>, rcon_tx: WatchTx<Arc<RconConfig>>, redeem_tx: WatchTx<Vec<RedeemConfig>>, twitch_tx: WatchTx<Arc<TwitchConfig>>) {
-    while let Ok(AppConfig { rcon, mut redeems, twitch, .. }) = config_rx.recv_async().await {
-        // TODO: Technically, this should be done in a blocking context, but as there should only
-        // ever be a few redeems, it's probably not worth doing so
-        redeems.sort_by(|a, b| a.reward.cmp(&b.reward));
-
+    while let Ok(AppConfig { rcon, redeems, twitch, .. }) = config_rx.recv_async().await {
         rcon_tx.send_if_modified(move |old| {
             let changed = old.as_ref() != &rcon;
             if changed {
