@@ -36,10 +36,10 @@ pub async fn run(redeem_rx: ChannelRx<RedeemCommand>, mut config_rx: WatchRx<Vec
 
 				let commands = {
 					let redeems = config_rx.borrow_and_update();
-					let start = redeems.partition_point(|r| *r.name < *redeem.reward_title);
+					let start = redeems.partition_point(|r| *r.reward < *redeem.reward_title);
 
 					redeems[start..].iter()
-						.take_while(|r| *r.name == *redeem.reward_title)
+						.take_while(|r| *r.reward == *redeem.reward_title)
 						.filter(|r| r.channel.as_ref().map(|c| c.as_str() == channel.as_str()).unwrap_or(true))
 						.map(|r| r.command.clone())
 						.collect::<Vec<_>>()

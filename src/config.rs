@@ -38,7 +38,7 @@ pub enum RconMode {
 #[derive(Clone, Debug, Deserialize, PartialEq)]
 #[serde(deny_unknown_fields, rename_all = "kebab-case")]
 pub struct RedeemConfig {
-	pub name: String,
+	pub reward: String,
 	pub channel: Option<String>,
 	pub command: Arc<str>,
 }
@@ -136,7 +136,7 @@ impl RconMode {
 
 impl RedeemConfig {
     pub fn validate(&self) -> AnyResult<()> {
-        ensure!(self.name.len() > 0, "A channel point redeem name must be configured for every redeem.");
+        ensure!(self.reward.len() > 0, "A channel point reward name must be configured for every redeem.");
         ensure!(self.command.len() > 0, "A command to send must be configured for every redeem.");
 		Ok(())
     }
@@ -163,7 +163,7 @@ pub async fn distribute(config_rx: ChannelRx<AppConfig>, rcon_tx: WatchTx<Arc<Rc
     while let Ok(AppConfig { rcon, mut redeems, twitch, .. }) = config_rx.recv_async().await {
         // TODO: Technically, this should be done in a blocking context, but as there should only
         // ever be a few redeems, it's probably not worth doing so
-        redeems.sort_by(|a, b| a.name.cmp(&b.name));
+        redeems.sort_by(|a, b| a.reward.cmp(&b.reward));
 
         rcon_tx.send_if_modified(move |old| {
             let changed = old.as_ref() != &rcon;

@@ -11,17 +11,17 @@ mode = 'factorio'
 auth-token = ''
 
 [[redeems]]
-name = 'Attack (Factorio)'
+reward = 'Attack (Factorio)'
 command = '/Attack 12 Barinzaya'
 
 [[redeems]]
-name = 'Paranoia (Factorio)'
+reward = 'Paranoia (Factorio)'
 command = '/Paranoia 100 15 Barinzaya'
 
 [[redeems]]
-name = 'Stinky (Factorio)'
+reward = 'Stinky (Factorio)'
 command = '/SpawnPollution 100 Barinzaya'
 
 [[redeems]]
-name = 'Teleport (Factorio)'
+reward = 'Teleport (Factorio)'
 command = '/Teleport 100 Barinzaya'
