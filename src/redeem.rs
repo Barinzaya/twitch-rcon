@@ -27,22 +27,24 @@ pub async fn run(redeem_rx: ChannelRx<RedeemCommand>, mut config_rx: WatchRx<Vec
 	loop {
 		match redeem_rx.recv_async().await {
 			Ok(RedeemCommand::Handle(redeem)) => {
-				let command = {
+				let commands = {
 					let redeems = config_rx.borrow_and_update();
-					redeems.binary_search_by(|r| r.name.as_ref().cmp(&redeem.reward_title))
-						.ok()
-						.map(|i| redeems[i].command.clone())
+					let start = redeems.partition_point(|r| *r.name < *redeem.reward_title);
+
+					redeems[start..].iter()
+						.take_while(|r| *r.name == *redeem.reward_title)
+						.map(|r| r.command.clone())
+						.collect::<Vec<_>>()
 				};
 
-				if let Some(command) = command {
-					log::info!(target: "redeem", "Processing \"{}\", redeemed by {} ({}).", redeem.reward_title, redeem.user_name, redeem.user_login);
+				let hits = commands.len();
+				log::info!(target: "redeem", "{} command{} triggered by redemption of \"{}\" by {} ({}).", hits, if hits != 1 { "s" } else { "" }, redeem.reward_title, redeem.user_name, redeem.user_login);
 
+				for command in commands {
 					if rcon_tx.send_async(RconCommand::Handle(command)).await.is_err() {
 						log::debug!(target: "redeem", "Stopping redeem processing due to RCON channel closure.");
 						break;
 					}
-				} else {
-					log::info!(target: "redeem", "No action configured for channel point redeem \"{}\".", redeem.reward_title);
 				}
 			},
 

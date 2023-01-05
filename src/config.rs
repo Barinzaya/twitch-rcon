@@ -162,7 +162,7 @@ pub async fn distribute(config_rx: ChannelRx<AppConfig>, rcon_tx: WatchTx<Arc<Rc
     while let Ok(AppConfig { rcon, mut redeems, twitch, .. }) = config_rx.recv_async().await {
         // TODO: Technically, this should be done in a blocking context, but as there should only
         // ever be a few redeems, it's probably not worth doing so
-        redeems.sort_unstable_by(|a, b| a.name.cmp(&b.name));
+        redeems.sort_by(|a, b| a.name.cmp(&b.name));
 
         rcon_tx.send_if_modified(move |old| {
             let changed = old.as_ref() != &rcon;
