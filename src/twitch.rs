@@ -72,28 +72,31 @@ async fn run_client(config: Arc<TwitchConfig>, redeem_tx: ChannelTx<RedeemComman
 	log::debug!(target: "twitch", "Twitch client starting.");
 	log::info!(target: "twitch", "Validating authentication token...");
 
-	let user_token = tokio::select!{
+	let channel_token = tokio::select!{
 		biased;
 		_ = cancel.cancelled() => return Ok(()),
-		user_token = authenticate(&config.auth_token) => user_token,
+		channel_token = authenticate(&config.auth_token) => channel_token,
 	}.context("Failed to validate auth token")?;
 
-	let user_id = user_token.user_id.context("User token does not specify a user ID!")?;
-	let user_login = user_token.login.context("User token does not specify a login!")?;
+	let channel_id = channel_token.user_id.as_ref()
+		.context("User token does not specify a user ID!")?
+		.as_str()
+		.parse::<u32>()
+		.context("Failed to parse channel ID")?;
 
-	if let Some(expires_in) = user_token.expires_in {
+	let channel_login = channel_token.login.as_ref()
+		.context("User token does not specify a login!")?;
+
+	if let Some(expires_in) = channel_token.expires_in {
 		let expiration = time::OffsetDateTime::now_local()
 			.context("Failed to get local time")? + expires_in;
 		let expiration_str = expiration.format(&time::format_description::well_known::Rfc2822)
 			.context("Failed to format expiration date")?;
-		log::info!(target: "twitch", "Authenticated with Twitch as {} ({}). Token expiration: {}", user_login, user_id, expiration_str);
+		log::info!(target: "twitch", "Authenticated with Twitch as {} ({}). Token expiration: {}", channel_login, channel_id, expiration_str);
 	} else {
-		log::info!(target: "twitch", "Authenticated with Twitch as {} ({}).", user_login, user_id);
+		log::info!(target: "twitch", "Authenticated with Twitch as {} ({}).", channel_login, channel_id);
 	}
 
-	let channel_id = user_id
-		.as_str().parse::<u32>()
-		.context("Failed to parse user ID")?;
 	let topics = Arc::from_iter([
 		pubsub::channel_points::ChannelPointsChannelV1 { channel_id }.into_topic(),
 	]);
@@ -104,7 +107,7 @@ async fn run_client(config: Arc<TwitchConfig>, redeem_tx: ChannelTx<RedeemComman
 		let session_cancel = cancel.child_token();
 		let _guard = session_cancel.clone().drop_guard();
 
-		let mut session_task = tokio::spawn(run_session(config.auth_token.clone(), topics.clone(), redeem_tx.clone(), backoff.clone(), session_cancel.clone()));
+		let mut session_task = tokio::spawn(run_session(config.auth_token.clone(), channel_token.clone(), topics.clone(), redeem_tx.clone(), backoff.clone(), session_cancel.clone()));
 
 		let result = tokio::select!{
 			biased;
@@ -170,17 +173,17 @@ async fn run_client(config: Arc<TwitchConfig>, redeem_tx: ChannelTx<RedeemComman
 	result
 }
 
-async fn authenticate(auth_token: &str) -> AnyResult<ValidatedToken> {
+async fn authenticate(auth_token: &str) -> AnyResult<Arc<ValidatedToken>> {
 	let http_client = reqwest::Client::new();
 	let access_token = AccessTokenRef::from_str(&auth_token);
 
 	let user_token = access_token.validate_token(&http_client).await
 		.map_err(|e| anyhow!(e))?;
 	log::debug!(target: "twitch", "User token: {:?}", user_token);
-	Ok(user_token)
+	Ok(Arc::new(user_token))
 }
 
-async fn run_session(auth_token: Arc<str>, topics: Arc<[Topics]>, redeem_tx: ChannelTx<RedeemCommand>, backoff: Arc<Mutex<f64>>, cancel: CancellationToken) -> Result<ControlFlow<()>, ControlFlow<AnyError, AnyError>> {
+async fn run_session(auth_token: Arc<str>, channel_token: Arc<ValidatedToken>, topics: Arc<[Topics]>, redeem_tx: ChannelTx<RedeemCommand>, backoff: Arc<Mutex<f64>>, cancel: CancellationToken) -> Result<ControlFlow<()>, ControlFlow<AnyError, AnyError>> {
 	log::debug!(target: "twitch", "Twitch session starting.");
 	log::info!(target: "twitch", "Connecting to Twitch PubSub API...");
 
@@ -263,6 +266,8 @@ async fn run_session(auth_token: Arc<str>, topics: Arc<[Topics]>, redeem_tx: Cha
 									log::info!(target: "twitch", "{} ({}) redeemed {} ({})", redemption.user.display_name, redemption.user.login, redemption.reward.title, redemption.reward.id);
 
 									redeem_tx.send(RedeemCommand::Handle(Redeem {
+										channel_token: channel_token.clone(),
+
 										redeem_id: redemption.id,
 										redeem_input: redemption.user_input,
 

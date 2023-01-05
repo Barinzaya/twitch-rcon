@@ -1,3 +1,5 @@
+use std::sync::{Arc};
+
 use flume::{Receiver as ChannelRx, RecvError as ChannelRxErr, Sender as ChannelTx};
 use tokio::sync::watch::{Receiver as WatchRx};
 
@@ -6,6 +8,8 @@ use crate::rcon::{RconCommand};
 
 #[derive(Clone, Debug)]
 pub struct Redeem {
+	pub channel_token: Arc<twitch_oauth2::ValidatedToken>,
+
 	pub redeem_id: twitch_api2::types::RedemptionId,
 	pub redeem_input: Option<String>,
 
@@ -27,6 +31,9 @@ pub async fn run(redeem_rx: ChannelRx<RedeemCommand>, mut config_rx: WatchRx<Vec
 	loop {
 		match redeem_rx.recv_async().await {
 			Ok(RedeemCommand::Handle(redeem)) => {
+				let channel = redeem.channel_token.login.as_ref()
+					.expect("Channel token did not contain a login!");
+
 				let commands = {
 					let redeems = config_rx.borrow_and_update();
 					let start = redeems.partition_point(|r| *r.name < *redeem.reward_title);
@@ -38,7 +45,7 @@ pub async fn run(redeem_rx: ChannelRx<RedeemCommand>, mut config_rx: WatchRx<Vec
 				};
 
 				let hits = commands.len();
-				log::info!(target: "redeem", "{} command{} triggered by redemption of \"{}\" by {} ({}).", hits, if hits != 1 { "s" } else { "" }, redeem.reward_title, redeem.user_name, redeem.user_login);
+				log::info!(target: "redeem", "{} command{} triggered by redemption of \"{}\" by {} ({}) in {}.", hits, if hits != 1 { "s" } else { "" }, redeem.reward_title, redeem.user_name, redeem.user_login, channel);
 
 				for command in commands {
 					if rcon_tx.send_async(RconCommand::Handle(command)).await.is_err() {
