@@ -150,7 +150,7 @@ impl RedeemConfig {
 	pub fn command(&self) -> AnyResult<String> {
 		let mut result = self.command.clone().into_bytes();
 
-		self.extra.write_as(&mut result, self.format)
+		self.format.write(&mut result, self.extra.0.iter().map(|p| (&p.0, &p.1)))
 			.context("Failed to serialize extra data for command")?;
 
 		let result = String::from_utf8(result)

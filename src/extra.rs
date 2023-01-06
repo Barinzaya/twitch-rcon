@@ -17,7 +17,7 @@ pub enum ExtraFormat {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct ExtraMap(Vec<(String, ExtraValue)>);
+pub struct ExtraMap(pub Vec<(String, ExtraValue)>);
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 #[serde(untagged)]
@@ -27,44 +27,45 @@ pub enum ExtraValue {
 	String(String),
 }
 
-impl ExtraMap {
-	pub fn write_as<W: Write>(&self, mut writer: W, format: ExtraFormat) -> AnyResult<()> {
-		if self.0.is_empty() {
-			return Ok(());
-		}
+impl ExtraFormat {
+	pub fn write<K: Display + Serialize, V: Display + Serialize>(&self, mut writer: impl Write, pairs: impl IntoIterator<Item = (K, V)>) -> AnyResult<()> {
+		let mut pairs = pairs.into_iter().peekable();
+		if pairs.peek().is_some() {
+			match self {
+				&ExtraFormat::JsonArray => {
+					writer.write(b" ").context("Failed to add pre-JSON space")?;
+					serde_json::Serializer::new(writer)
+						.collect_seq(pairs)
+						.context("Failed to serialize extra data as JSON array")
+				},
 
-		match format {
-			ExtraFormat::JsonArray => {
-				writer.write(b" ").context("Failed to add pre-JSON space")?;
-				serde_json::Serializer::new(writer)
-					.collect_seq(self.0.iter().map(|&(_, ref v)| v))
-					.context("Failed to serialize extra data as JSOn array")
-			},
+				&ExtraFormat::JsonMap => {
+					writer.write(b" ").context("Failed to add pre-JSON space")?;
+					serde_json::Serializer::new(writer)
+						.collect_map(pairs)
+						.context("Failed to serialize extra data as JSON map")
+				},
 
-			ExtraFormat::JsonMap => {
-				writer.write(b" ").context("Failed to add pre-JSON space")?;
-				serde_json::Serializer::new(writer)
-					.collect_map(self.0.iter().map(|&(ref k, ref v)| (k, v)))
-					.context("Failed to serialize extra data as JSOn map")
-			},
+				&ExtraFormat::SpaceKeyValue => {
+					for (k, v) in pairs {
+						writer.write_fmt(format_args!(" {}={}", k, v))
+							.context("Failed to format extra data as space-key-value")?;
+					}
 
-			ExtraFormat::SpaceKeyValue => {
-				for (k, v) in &self.0 {
-					writer.write_fmt(format_args!(" {}={}", k, v))
-						.context("Failed to format extra data as space-key-value")?;
-				}
+					Ok(())
+				},
 
-				Ok(())
-			},
+				&ExtraFormat::SpaceValue => {
+					for (_, v) in pairs {
+						writer.write_fmt(format_args!(" {}", v))
+							.context("Failed to format extra data as space-value")?;
+					}
 
-			ExtraFormat::SpaceValue => {
-				for (_, v) in &self.0 {
-					writer.write_fmt(format_args!(" {}", v))
-						.context("Failed to format extra data as space-value")?;
-				}
-
-				Ok(())
-			},
+					Ok(())
+				},
+			}
+		} else {
+			Ok(())
 		}
 	}
 }
