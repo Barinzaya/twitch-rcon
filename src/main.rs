@@ -16,7 +16,7 @@ use crate::config::{AppConfig};
 
 fn main() -> ExitCode {
     init_logger().expect("Failed to set up logger");
-    log::info!("Twitch to RCON bot starting...");
+    log::info!("Twitch to RCON bot v{} starting...", env!("CARGO_PKG_VERSION"));
 
     match run_sync() {
         Ok(()) => {
