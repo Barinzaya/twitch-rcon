@@ -1,5 +1,6 @@
 mod abort;
 mod config;
+mod extra;
 mod rcon;
 mod redeem;
 mod twitch;
