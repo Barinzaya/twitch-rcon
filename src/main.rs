@@ -110,7 +110,7 @@ async fn run_async() -> AnyResult<()> {
         let (rcon_tx, rcon_rx) = flume::bounded(1);
         let (redeem_tx, redeem_rx) = flume::bounded(1);
 
-        set.spawn(rcon::run(rcon_rx, rcon_config_rx));
+        set.spawn(rcon::run(rcon_rx, rcon_config_rx, cancel.clone()));
         set.spawn(redeem::run(redeem_rx, base_redeem_config_rx, redeems_config_rx, rcon_tx));
         set.spawn(twitch::run(twitch_config_rx, redeem_tx, cancel.clone()));
     }

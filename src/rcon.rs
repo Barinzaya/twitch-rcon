@@ -3,6 +3,7 @@ use std::{sync::{Arc}, time::Duration};
 use anyhow::{Context as _, Result as AnyResult};
 use flume::{Receiver as ChannelRx, RecvError as ChannelRxErr, Sender as ChannelTx};
 use tokio::sync::watch::{Receiver as WatchRx};
+use tokio_util::sync::{CancellationToken};
 
 use crate::config::{RconConfig, SetRconMode};
 
@@ -16,47 +17,40 @@ pub enum RconCommand {
 	Handle(Arc<str>),
 }
 
-pub async fn run(rcon_rx: ChannelRx<RconCommand>, mut config_rx: WatchRx<Arc<RconConfig>>) {
+pub async fn run(rcon_rx: ChannelRx<RconCommand>, mut config_rx: WatchRx<Arc<RconConfig>>, cancel: CancellationToken) {
 	let (send_tx, send_rx) = flume::bounded(1);
 	let (resend_tx, resend_rx) = flume::bounded(1);
 
-	let mut command_task = tokio::spawn(async move {
+	let command_task = tokio::spawn(async move {
 		while let Ok(command) = rcon_rx.recv_async().await {
 			match command {
 				RconCommand::Handle(command) => {
-					send_tx.send_async(command).await
-						.expect("Failed to queue RCON command");
+					match send_tx.send_async(command).await {
+						Ok(()) => {},
+
+						Err(_) => {
+							log::debug!(target: "rcon", "Stopping RCON command task due to closure of command outtake channel.");
+							return;
+						},
+					}
 				},
 			}
 		}
 
-		log::debug!(target: "rcon", "Stopping RCON command task due to closure of RCON channel.");
+		log::debug!(target: "rcon", "Stopping RCON command task due to closure of command intake channel.");
 	});
 
-	loop {
+	while !cancel.is_cancelled() {
 		let config = config_rx.borrow_and_update().clone();
-		let mut client_task = tokio::spawn(run_client(config, send_rx.clone(), resend_rx.clone(), resend_tx.clone()));
+		let client_cancel = cancel.child_token();
+		let mut client_task = tokio::spawn(run_client(config, send_rx.clone(), resend_rx.clone(), resend_tx.clone(), client_cancel.clone()));
+		let mut client_result = None;
 
 		tokio::select!{
 			biased;
 
-			_ = &mut command_task => {
-				log::debug!(target: "rcon", "Stopping RCON main task due to stoppage of RCON command task.");
-				break;
-			},
-
 			result = &mut client_task => {
-				match result {
-					Ok(()) => {
-						log::debug!(target: "rcon", "Stopping RCON main task due to stoppage of RCON client task.");
-						break;
-					},
-
-					Err(e) => {
-						log::warn!(target: "rcon", "RCON client task encountered an error! Resetting RCON client.");
-						log::error!(target: "rcon", "RCON client error: {:#}", e);
-					},
-				}
+				client_result = Some(result);
 			},
 
 			Ok(_) = config_rx.changed() => {
@@ -64,14 +58,32 @@ pub async fn run(rcon_rx: ChannelRx<RconCommand>, mut config_rx: WatchRx<Arc<Rco
 			},
 		}
 
-		client_task.abort();
-		let _ = client_task.await;
+		let client_result = if let Some(r) = client_result {
+			r
+		} else {
+			client_cancel.cancel();
+			client_task.await
+		};
+
+		match client_result {
+			Ok(()) => log::debug!(target: "rcon", "RCON main task exited cleanly."),
+			Err(e) => {
+				log::warn!(target: "rcon", "RCON client task encountered an error! Resetting RCON client.");
+				log::error!(target: "rcon", "RCON client error: {:#}", e);
+			},
+		}
+	}
+
+	drop(send_rx);
+	match command_task.await {
+		Ok(()) => log::debug!(target: "rcon", "RCON command task exited cleanly."),
+		Err(e) => log::error!(target: "rcon", "RCON command task encountered an error: {:#}", e),
 	}
 
 	log::info!(target: "rcon", "RCON client stopped.");
 }
 
-async fn run_client(config: Arc<RconConfig>, send_rx: ChannelRx<Arc<str>>, resend_rx: ChannelRx<Arc<str>>, resend_tx: ChannelTx<Arc<str>>) {
+async fn run_client(config: Arc<RconConfig>, send_rx: ChannelRx<Arc<str>>, resend_rx: ChannelRx<Arc<str>>, resend_tx: ChannelTx<Arc<str>>, cancel: CancellationToken) {
 	let mut backoff = BACKOFF_MIN;
 
 	while !send_rx.is_disconnected() {
@@ -90,6 +102,10 @@ async fn run_client(config: Arc<RconConfig>, send_rx: ChannelRx<Arc<str>>, resen
 					biased;
 					recv = resend_rx.recv_async() => recv,
 					recv = send_rx.recv_async() => recv,
+					_ = cancel.cancelled() => {
+						log::debug!(target: "rcon", "RCON client task stopping due to cancellation.");
+						break
+					},
 				};
 
 				let command = match recv {
@@ -127,10 +143,25 @@ async fn run_client(config: Arc<RconConfig>, send_rx: ChannelRx<Arc<str>>, resen
 			Err(e) => {
 				log::error!(target: "rcon", "RCOM client has encountered an error: {:#}", e);
 
+				if cancel.is_cancelled() {
+					log::info!(target: "rcon", "RCON client stopping now.");
+					break;
+				}
+
 				if backoff > 0.0 {
 					let wait = crate::util::jitter(backoff, BACKOFF_JITTER);
 					log::info!(target: "rcon", "RCON client will reconnect in {:.1} second(s).", wait);
-					tokio::time::sleep(Duration::from_secs_f64(wait)).await;
+
+					tokio::select!{
+						biased;
+
+						_ = cancel.cancelled() => {
+							log::info!(target: "rcon", "RCON reconnect cancelled due to shutdown.");
+							break;
+						},
+
+						_ = tokio::time::sleep(Duration::from_secs_f64(wait)) => {},
+					}
 				} else {
 					log::info!(target: "rcon", "RCON client reconnecting now.");
 				}
