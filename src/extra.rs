@@ -28,14 +28,14 @@ pub enum ExtraValue {
 }
 
 impl ExtraFormat {
-	pub fn write<K: Display + Serialize, V: Display + Serialize>(&self, mut writer: impl Write, pairs: impl IntoIterator<Item = (K, V)>) -> AnyResult<()> {
+	pub fn write<'i>(&self, mut writer: impl Write, pairs: impl IntoIterator<Item = (&'i str, &'i ExtraValue)>) -> AnyResult<()> {
 		let mut pairs = pairs.into_iter().peekable();
 		if pairs.peek().is_some() {
 			match self {
 				&ExtraFormat::JsonArray => {
 					writer.write(b" ").context("Failed to add pre-JSON space")?;
 					serde_json::Serializer::new(writer)
-						.collect_seq(pairs)
+						.collect_seq(pairs.map(|p| p.1))
 						.context("Failed to serialize extra data as JSON array")
 				},
 
@@ -48,8 +48,7 @@ impl ExtraFormat {
 
 				&ExtraFormat::SpaceKeyValue => {
 					for (k, v) in pairs {
-						writer.write_fmt(format_args!(" {}={}", k, v))
-							.context("Failed to format extra data as space-key-value")?;
+						write!(writer, " {}={}", k, v)?;
 					}
 
 					Ok(())
@@ -57,8 +56,7 @@ impl ExtraFormat {
 
 				&ExtraFormat::SpaceValue => {
 					for (_, v) in pairs {
-						writer.write_fmt(format_args!(" {}", v))
-							.context("Failed to format extra data as space-value")?;
+						write!(writer, " {}", v)?;
 					}
 
 					Ok(())
