@@ -9,14 +9,16 @@ mode = 'factorio' # The type of server being connected to. May be 'factorio', 'm
 # https://id.twitch.tv/oauth2/authorize?client_id=lm0k1rk7zowacwnrfmk8c7gxteft9r&redirect_uri=https://barinzaya.github.io/oauth.html&response_type=token&scope=channel:read:redemptions
 #
 # Paste the token inside of the quotes below
-auth-token = ''
+
+[all-redeems]
+format = 'json-map'
+name = 'Barinzaya'
 
 [[redeems]]
 reward = 'Attack (Factorio)'
 command = '/Attack'
 
 limit = 12
-name = 'Barinzaya'
 
 [[redeems]]
 reward = 'Paranoia (Factorio)'
@@ -24,18 +26,15 @@ command = '/Paranoia'
 
 limit = 15
 radius = 200
-name = 'Barinzaya'
 
 [[redeems]]
 reward = 'Stinky (Factorio)'
 command = '/SpawnPollution'
 
 pollution = 240
-name = 'Barinzaya'
 
 [[redeems]]
 reward = 'Teleport (Factorio)'
 command = '/Teleport'
 
 radius = 100
-name = 'Barinzaya'

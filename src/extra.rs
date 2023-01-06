@@ -16,8 +16,8 @@ pub enum ExtraFormat {
 	SpaceValue,
 }
 
-#[derive(Clone, Debug, PartialEq)]
-pub struct ExtraMap(pub Vec<(String, ExtraValue)>);
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct ExtraMap(Vec<(String, ExtraValue)>);
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 #[serde(untagged)]
@@ -65,6 +65,12 @@ impl ExtraFormat {
 		} else {
 			Ok(())
 		}
+	}
+}
+
+impl ExtraMap {
+	pub fn iter(&self) -> impl Iterator<Item = &(String, ExtraValue)> {
+		self.0.iter()
 	}
 }
 

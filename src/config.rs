@@ -12,12 +12,15 @@ use tokio_util::sync::{CancellationToken};
 use crate::extra::{ExtraFormat, ExtraMap};
 
 #[derive(Clone, Debug, Deserialize, PartialEq)]
-#[serde(deny_unknown_fields)]
+#[serde(deny_unknown_fields, rename_all = "kebab-case")]
 pub struct AppConfig {
 	pub rcon: RconConfig,
 	pub twitch: TwitchConfig,
 
-	#[serde(default = "Vec::new")]
+	#[serde(default)]
+	pub all_redeems: AllRedeemsConfig,
+
+	#[serde(default)]
 	pub redeems: Vec<RedeemConfig>,
 }
 
@@ -37,6 +40,16 @@ pub enum RconMode {
 	Source,
 }
 
+#[derive(Clone, Debug, Default, Deserialize, PartialEq)]
+#[serde(rename_all = "kebab-case")]
+pub struct AllRedeemsConfig {
+	#[serde(flatten)]
+	pub extra: ExtraMap,
+
+	#[serde(default)]
+	pub format: ExtraFormat,
+}
+
 #[derive(Clone, Debug, Deserialize, PartialEq)]
 #[serde(rename_all = "kebab-case")]
 pub struct RedeemConfig {
@@ -48,7 +61,7 @@ pub struct RedeemConfig {
 	pub extra: ExtraMap,
 
 	#[serde(default)]
-	pub format: ExtraFormat,
+	pub format: Option<ExtraFormat>,
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq)]
@@ -147,15 +160,24 @@ impl RconMode {
 }
 
 impl RedeemConfig {
-	pub fn command(&self) -> AnyResult<String> {
-		let mut result = self.command.clone().into_bytes();
+	pub fn command(&self, base_config: &AllRedeemsConfig) -> AnyResult<String> {
+		let command = self.command.clone();
 
-		self.format.write(&mut result, self.extra.0.iter().map(|p| (p.0.as_str(), &p.1)))
-			.context("Failed to serialize extra data for command")?;
+		let mut extra = base_config.extra.iter().chain(self.extra.iter()).peekable();
+		let command = if extra.peek().is_some() {
+			let mut bytes = command.into_bytes();
 
-		let result = String::from_utf8(result)
-			.context("Failed to validate command as UTF-8 data")?;
-		Ok(result)
+			let format = self.format.unwrap_or(base_config.format);
+			format.write(&mut bytes, extra.map(|p| (p.0.as_str(), &p.1)))
+				.context("Failed to serialize extra data for command")?;
+
+			String::from_utf8(bytes)
+				.context("Failed to validate command as UTF-8 data")?
+		} else {
+			command
+		};
+
+		Ok(command)
 	}
 
     pub fn validate(&self) -> AnyResult<()> {
@@ -183,8 +205,8 @@ impl<T> SetRconMode for rcon::Builder<T> {
 	}
 }
 
-pub async fn distribute(config_rx: ChannelRx<AppConfig>, rcon_tx: WatchTx<Arc<RconConfig>>, redeem_tx: WatchTx<Vec<RedeemConfig>>, twitch_tx: WatchTx<Arc<TwitchConfig>>) {
-    while let Ok(AppConfig { rcon, redeems, twitch, .. }) = config_rx.recv_async().await {
+pub async fn distribute(config_rx: ChannelRx<AppConfig>, rcon_tx: WatchTx<Arc<RconConfig>>, base_redeem_tx: WatchTx<AllRedeemsConfig>, redeems_tx: WatchTx<Vec<RedeemConfig>>, twitch_tx: WatchTx<Arc<TwitchConfig>>) {
+    while let Ok(AppConfig { rcon, all_redeems, redeems, twitch, .. }) = config_rx.recv_async().await {
         rcon_tx.send_if_modified(move |old| {
             let changed = old.as_ref() != &rcon;
             if changed {
@@ -194,7 +216,16 @@ pub async fn distribute(config_rx: ChannelRx<AppConfig>, rcon_tx: WatchTx<Arc<Rc
             changed
         });
 
-        redeem_tx.send_if_modified(move |old| {
+		base_redeem_tx.send_if_modified(move |old| {
+            let changed = old != &all_redeems;
+            if changed {
+                log::info!(target: "config", "Redeem configuration change detected!");
+                *old = all_redeems;
+            }
+            changed
+		});
+
+        redeems_tx.send_if_modified(move |old| {
             let changed = old != &redeems;
             if changed {
                 log::info!(target: "config", "Redeem configuration change detected!");

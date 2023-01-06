@@ -100,17 +100,18 @@ async fn run_async() -> AnyResult<()> {
 
         let (config_tx, config_rx) = flume::bounded(1);
         let (rcon_config_tx, rcon_config_rx) = tokio::sync::watch::channel(Arc::new(config.rcon));
-        let (redeem_config_tx, redeem_config_rx) = tokio::sync::watch::channel(config.redeems);
+        let (base_redeem_config_tx, base_redeem_config_rx) = tokio::sync::watch::channel(config.all_redeems);
+        let (redeems_config_tx, redeems_config_rx) = tokio::sync::watch::channel(config.redeems);
         let (twitch_config_tx, twitch_config_rx) = tokio::sync::watch::channel(Arc::new(config.twitch));
 
         set.spawn(AppConfig::watch(config_path, config_tx, cancel.clone()));
-        set.spawn(config::distribute(config_rx, rcon_config_tx, redeem_config_tx, twitch_config_tx));
+        set.spawn(config::distribute(config_rx, rcon_config_tx, base_redeem_config_tx, redeems_config_tx, twitch_config_tx));
 
         let (rcon_tx, rcon_rx) = flume::bounded(1);
         let (redeem_tx, redeem_rx) = flume::bounded(1);
 
         set.spawn(rcon::run(rcon_rx, rcon_config_rx));
-        set.spawn(redeem::run(redeem_rx, redeem_config_rx, rcon_tx));
+        set.spawn(redeem::run(redeem_rx, base_redeem_config_rx, redeems_config_rx, rcon_tx));
         set.spawn(twitch::run(twitch_config_rx, redeem_tx, cancel.clone()));
     }
 

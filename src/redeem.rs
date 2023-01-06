@@ -3,7 +3,7 @@ use std::sync::{Arc};
 use flume::{Receiver as ChannelRx, RecvError as ChannelRxErr, Sender as ChannelTx};
 use tokio::sync::watch::{Receiver as WatchRx};
 
-use crate::config::{RedeemConfig};
+use crate::config::{AllRedeemsConfig, RedeemConfig};
 use crate::rcon::{RconCommand};
 
 #[derive(Clone, Debug)]
@@ -27,7 +27,7 @@ pub enum RedeemCommand {
 	Handle(Redeem),
 }
 
-pub async fn run(redeem_rx: ChannelRx<RedeemCommand>, mut config_rx: WatchRx<Vec<RedeemConfig>>, rcon_tx: ChannelTx<RconCommand>) {
+pub async fn run(redeem_rx: ChannelRx<RedeemCommand>, mut base_config_rx: WatchRx<AllRedeemsConfig>, mut redeems_config_rx: WatchRx<Vec<RedeemConfig>>, rcon_tx: ChannelTx<RconCommand>) {
 	loop {
 		match redeem_rx.recv_async().await {
 			Ok(RedeemCommand::Handle(redeem)) => {
@@ -35,13 +35,14 @@ pub async fn run(redeem_rx: ChannelRx<RedeemCommand>, mut config_rx: WatchRx<Vec
 					.expect("Channel token did not contain a login!");
 
 				let commands = {
-					let redeems = config_rx.borrow_and_update();
+                    let base = base_config_rx.borrow_and_update();
+					let redeems = redeems_config_rx.borrow_and_update();
 					let start = redeems.partition_point(|r| *r.reward < *redeem.reward_title);
 
 					redeems[start..].iter()
 						.take_while(|r| *r.reward == *redeem.reward_title)
 						.filter(|r| r.channel.as_ref().map(|c| c.as_str() == channel.as_str()).unwrap_or(true))
-						.map(|r| r.command().map(|s| Arc::from(s)))
+						.map(|r| r.command(&base).map(|s| Arc::from(s)))
 						.collect::<Vec<_>>()
 				};
 
