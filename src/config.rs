@@ -30,6 +30,9 @@ pub struct RconConfig {
 	pub host: String,
 	pub password: String,
 	pub mode: RconMode,
+
+	#[serde(default = "RconConfig::default_retry")]
+    pub retry: bool,
 }
 
 #[derive(Clone, Copy, Debug, Deserialize, PartialEq)]
@@ -149,6 +152,10 @@ impl RconConfig {
         ensure!(self.host.len() > 0, "An RCON host must be specified. See twitch-rcon.toml for more information.");
 		Ok(())
     }
+
+	fn default_retry() -> bool {
+		true
+	}
 }
 
 impl RconMode {

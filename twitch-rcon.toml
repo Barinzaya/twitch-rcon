@@ -3,6 +3,7 @@
 host = '127.0.0.1:12345' # IP and port of the RCON server to send commands to
 password = 'password' # The password to supply to the server
 mode = 'factorio' # The type of server being connected to. May be 'factorio', 'minecraft', or 'source'.
+retry = true # Whether to automatically retry any commands that fail to send.
 
 [twitch]
 # To get an auth token, visit the following URL:

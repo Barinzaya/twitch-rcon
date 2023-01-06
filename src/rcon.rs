@@ -93,7 +93,10 @@ async fn run_client(config: Arc<RconConfig>, send_rx: ChannelRx<Arc<str>>, resen
 				};
 
 				let command = match recv {
-					Ok(command) => crate::util::DropSend::new(command, &resend_tx),
+					Ok(command) => {
+						crate::util::DropSend::new(command, config.retry.then_some(&resend_tx))
+					},
+
 					Err(ChannelRxErr::Disconnected) => {
 						log::debug!(target: "rcon", "Stopping RCON client task due to closure of command send channel.");
 						break

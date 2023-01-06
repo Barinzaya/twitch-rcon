@@ -6,10 +6,10 @@ pub fn jitter(nominal: f64, jitter: f64) -> f64 {
 	nominal * (1.0 - jitter * (1.0 - 2.0 * fastrand::f64()))
 }
 
-pub struct DropSend<'c, T: 'c>(Option<T>, &'c ChannelTx<T>);
+pub struct DropSend<'c, T: 'c>(Option<T>, Option<&'c ChannelTx<T>>);
 
 impl<'c, T: 'c> DropSend<'c, T> {
-	pub fn new(message: T, channel: &'c ChannelTx<T>) -> Self {
+	pub fn new(message: T, channel: Option<&'c ChannelTx<T>>) -> Self {
 		DropSend(Some(message), channel)
 	}
 
@@ -45,8 +45,8 @@ impl<'c, T: 'c> DerefMut for DropSend<'c, T> {
 
 impl<'c, T: 'c> Drop for DropSend<'c, T> {
 	fn drop(&mut self) {
-		if let Some(message) = self.0.take() {
-			self.1.send(message).expect("Failed to send on drop.");
+		if let Some((message, channel)) = self.0.take().zip(self.1.take()) {
+			channel.send(message).expect("Failed to send on drop.");
 		}
 	}
 }
