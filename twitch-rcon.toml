@@ -9,6 +9,7 @@ mode = 'factorio' # The type of server being connected to. May be 'factorio', 'm
 # https://id.twitch.tv/oauth2/authorize?client_id=lm0k1rk7zowacwnrfmk8c7gxteft9r&redirect_uri=https://barinzaya.github.io/oauth.html&response_type=token&scope=channel:read:redemptions
 #
 # Paste the token inside of the quotes below
+auth-token = ''
 
 [all-redeems]
 format = 'json-map'
