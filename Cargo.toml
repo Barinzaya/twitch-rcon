@@ -2,7 +2,7 @@
 name = "twitch-rcon"
 description = "A utility which allows Twitch channel point rewards to trigger RCON commands. Compatible with Source engine games, Minecraft, and Factorio."
 authors = ["Barinzaya <barinzaya@gmail.com>"]
-version = "0.2.1"
+version = "0.2.2"
 edition = "2021"
 license = "MIT"
 
