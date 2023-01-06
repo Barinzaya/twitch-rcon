@@ -65,6 +65,7 @@ pub async fn run(mut config_rx: WatchRx<Arc<TwitchConfig>>, redeem_tx: ChannelTx
 		let _ = client_task.await;
 	}
 
+	cancel.cancel();
 	log::info!(target: "twitch", "Twitch interface stopped.");
 }
 
