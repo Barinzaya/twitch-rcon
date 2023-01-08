@@ -42,7 +42,7 @@ pub async fn run(redeem_rx: ChannelRx<RedeemCommand>, mut base_config_rx: WatchR
 					redeems[start..].iter()
 						.take_while(|r| *r.reward == *redeem.reward_title)
 						.filter(|r| r.channel.as_ref().map(|c| c.as_str() == channel.as_str()).unwrap_or(true))
-						.map(|r| r.command(&base).map(|s| Arc::from(s)))
+						.map(|r| r.command(&base).map(Arc::from))
 						.collect::<Vec<_>>()
 				};
 

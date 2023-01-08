@@ -31,22 +31,22 @@ impl ExtraFormat {
 	pub fn write<'i>(&self, mut writer: impl Write, pairs: impl IntoIterator<Item = (&'i str, &'i ExtraValue)>) -> AnyResult<()> {
 		let mut pairs = pairs.into_iter().peekable();
 		if pairs.peek().is_some() {
-			match self {
-				&ExtraFormat::JsonArray => {
+			match *self {
+				ExtraFormat::JsonArray => {
 					writer.write(b" ").context("Failed to add pre-JSON space")?;
 					serde_json::Serializer::new(writer)
 						.collect_seq(pairs.map(|p| p.1))
 						.context("Failed to serialize extra data as JSON array")
 				},
 
-				&ExtraFormat::JsonMap => {
+				ExtraFormat::JsonMap => {
 					writer.write(b" ").context("Failed to add pre-JSON space")?;
 					serde_json::Serializer::new(writer)
 						.collect_map(pairs)
 						.context("Failed to serialize extra data as JSON map")
 				},
 
-				&ExtraFormat::SpaceKeyValue => {
+				ExtraFormat::SpaceKeyValue => {
 					for (k, v) in pairs {
 						write!(writer, " {}={}", k, v)?;
 					}
@@ -54,7 +54,7 @@ impl ExtraFormat {
 					Ok(())
 				},
 
-				&ExtraFormat::SpaceValue => {
+				ExtraFormat::SpaceValue => {
 					for (_, v) in pairs {
 						write!(writer, " {}", v)?;
 					}
@@ -76,10 +76,10 @@ impl ExtraMap {
 
 impl Display for ExtraValue {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		match self {
-			&ExtraValue::Float(x) => write!(f, "{}", x),
-			&ExtraValue::Int(x) => write!(f, "{}", x),
-			&ExtraValue::String(ref x) => write!(f, "{}", x),
+		match *self {
+			ExtraValue::Float(x) => write!(f, "{}", x),
+			ExtraValue::Int(x) => write!(f, "{}", x),
+			ExtraValue::String(ref x) => write!(f, "{}", x),
 		}
 	}
 }

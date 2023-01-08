@@ -21,7 +21,7 @@ const BACKOFF_MAX: f64 = 120.0;
 const BACKOFF_GROWTH: f64 = 1.0;
 const BACKOFF_JITTER: f64 = 0.1;
 
-const LISTEN_NONCE: &'static str = "Listen";
+const LISTEN_NONCE: &str = "Listen";
 
 const PING_JITTER: f64 = 0.1;
 const PING_TIME: f64 = 270.0;
@@ -176,7 +176,7 @@ async fn run_client(config: Arc<TwitchConfig>, redeem_tx: ChannelTx<RedeemComman
 
 async fn authenticate(auth_token: &str) -> AnyResult<Arc<ValidatedToken>> {
 	let http_client = reqwest::Client::new();
-	let access_token = AccessTokenRef::from_str(&auth_token);
+	let access_token = AccessTokenRef::from_str(auth_token);
 
 	let user_token = access_token.validate_token(&http_client).await
 		.map_err(|e| anyhow!(e))?;
@@ -298,7 +298,7 @@ async fn run_session(auth_token: Arc<str>, channel_token: Arc<ValidatedToken>, t
 
 						pubsub::Response::Response(r) => {
 							if r.nonce.as_deref() == Some(LISTEN_NONCE) {
-								if let Some(e) = r.error.filter(|e| e.len() > 0) {
+								if let Some(e) = r.error.filter(|e| !e.is_empty()) {
 									result = Err(anyhow!(e))
 										.context("Failed to listen for channel point redemptions")
 										.with_break_err();
@@ -337,8 +337,8 @@ trait WithControlFlow {
 impl<T, E> WithControlFlow for Result<T, E>  {
 	type WithErr = Result<T, ControlFlow<E, E>>;
 	type WithOk = Result<ControlFlow<T, T>, E>;
-	fn with_break_err(self) -> Self::WithErr { self.map_err(|e| ControlFlow::Break(e)) }
-	fn with_continue_err(self) -> Self::WithErr { self.map_err(|e| ControlFlow::Continue(e)) }
-	fn with_break(self) -> Self::WithOk { self.map(|t| ControlFlow::Break(t)) }
-	fn with_continue(self) -> Self::WithOk { self.map(|t| ControlFlow::Continue(t)) }
+	fn with_break_err(self) -> Self::WithErr { self.map_err(ControlFlow::Break) }
+	fn with_continue_err(self) -> Self::WithErr { self.map_err(ControlFlow::Continue) }
+	fn with_break(self) -> Self::WithOk { self.map(ControlFlow::Break) }
+	fn with_continue(self) -> Self::WithOk { self.map(ControlFlow::Continue) }
 }

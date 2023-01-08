@@ -149,7 +149,7 @@ impl AppConfig {
 
 impl RconConfig {
     pub fn validate(&self) -> AnyResult<()> {
-        ensure!(self.host.len() > 0, "An RCON host must be specified. See twitch-rcon.toml for more information.");
+        ensure!(!self.host.is_empty(), "An RCON host must be specified. See twitch-rcon.toml for more information.");
 		Ok(())
     }
 
@@ -188,8 +188,8 @@ impl RedeemConfig {
 	}
 
     pub fn validate(&self) -> AnyResult<()> {
-        ensure!(self.reward.len() > 0, "A channel point reward name must be configured for every redeem.");
-        ensure!(self.command.len() > 0, "A command to send must be configured for every redeem.");
+        ensure!(!self.reward.is_empty(), "A channel point reward name must be configured for every redeem.");
+        ensure!(!self.command.is_empty(), "A command to send must be configured for every redeem.");
 
 		Ok(())
     }
